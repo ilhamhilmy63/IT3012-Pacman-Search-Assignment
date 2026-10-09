@@ -42,6 +42,7 @@ import util
 import time
 import search
 import pacman
+import itertools
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -431,9 +432,28 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     corners = problem.corners
     walls = problem.walls
 
-    # Q6 is not implemented yet.
-    # Returning 0 is a valid trivial heuristic.
-    return 0
+    # Relaxed problem: ignore walls, so moving between two squares costs
+    # exactly their Manhattan distance.
+    position, visited_corners = state
+    unvisited = [corner for corner in corners if corner not in visited_corners]
+    if not unvisited:
+        return 0
+
+    # Try every order of the remaining corners (at most 4! = 24) and keep the
+    # cheapest tour. Pacman must visit all of them in some order, and with
+    # walls the real path can only be longer, so this never overestimates
+    # (admissible). One step moves Manhattan distance to any point by at most
+    # 1, so the cheapest tour drops by at most 1 per step (consistent).
+    best = None
+    for order in itertools.permutations(unvisited):
+        total = 0
+        current = position
+        for corner in order:
+            total += util.manhattanDistance(current, corner)
+            current = corner
+        if best is None or total < best:
+            best = total
+    return best
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
