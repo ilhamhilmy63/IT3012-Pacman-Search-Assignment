@@ -274,74 +274,144 @@ class CornersProblem(search.SearchProblem):
     """
     This search problem finds paths through all four corners of a layout.
 
-    You must select a suitable state space and successor function
+    You must select a suitable state space and successor function.
     """
 
-    def __init__(self, startingGameState: pacman.GameState):
+    def __init__(self, startingGameState):
         """
-        Stores the walls, pacman's starting position and corners.
+        Stores the walls, Pac-Man's starting position,
+        and the coordinates of the four corners.
         """
+
         self.walls = startingGameState.getWalls()
         self.startingPosition = startingGameState.getPacmanPosition()
-        top, right = self.walls.height-2, self.walls.width-2
-        self.corners = ((1,1), (1,top), (right, 1), (right, top))
+
+        top = self.walls.height - 2
+        bottom = 1
+        right = self.walls.width - 2
+        left = 1
+
+        self.corners = (
+            (left, bottom),
+            (left, top),
+            (right, bottom),
+            (right, top)
+        )
+
         for corner in self.corners:
             if not startingGameState.hasFood(*corner):
-                print('Warning: no food in corner ' + str(corner))
-        self._expanded = 0 # DO NOT CHANGE; Number of search nodes expanded
+                print("Warning: no food in corner " + str(corner))
+
+        self._expanded = 0
+
 
     def getStartState(self):
         """
-        Returns the start state (in your state space, not the full Pacman state
-        space)
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        Returns the starting search state.
 
-    def isGoalState(self, state: Any):
+        State format:
+        (current_position, visited_corners)
         """
-        Returns whether this search state is a goal state of the problem.
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
-    def getSuccessors(self, state: Any):
-        """
-        Returns successor states, the actions they require, and a cost of 1.
+        visited_corners = ()
 
-         As noted in search.py:
-            For a given state, this should return a list of triples, (successor,
-            action, stepCost), where 'successor' is a successor to the current
-            state, 'action' is the action required to get there, and 'stepCost'
-            is the incremental cost of expanding to that successor
+        if self.startingPosition in self.corners:
+            visited_corners = (self.startingPosition,)
+
+        return (
+            self.startingPosition,
+            visited_corners
+        )
+
+
+    def isGoalState(self, state):
+        """
+        Returns True when all four corners have been visited.
+        """
+
+        position, visited_corners = state
+
+        return len(visited_corners) == len(self.corners)
+
+
+    def getSuccessors(self, state):
+        """
+        Returns successor states, actions, and step costs.
         """
 
         successors = []
-        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
-            # Add a successor state to the successor list if the action is legal
-            # Here's a code snippet for figuring out whether a new position hits a wall:
-            #   x,y = currentPosition
-            #   dx, dy = Actions.directionToVector(action)
-            #   nextx, nexty = int(x + dx), int(y + dy)
-            #   hitsWall = self.walls[nextx][nexty]
 
-            "*** YOUR CODE HERE ***"
+        position, visited_corners = state
 
-        self._expanded += 1 # DO NOT CHANGE
+        for action in [
+            Directions.NORTH,
+            Directions.SOUTH,
+            Directions.EAST,
+            Directions.WEST
+        ]:
+
+            x, y = position
+
+            dx, dy = Actions.directionToVector(action)
+
+            nextx = int(x + dx)
+            nexty = int(y + dy)
+
+            if not self.walls[nextx][nexty]:
+
+                next_position = (nextx, nexty)
+
+                new_visited = list(visited_corners)
+
+                if (
+                    next_position in self.corners
+                    and next_position not in new_visited
+                ):
+                    new_visited.append(next_position)
+
+                new_state = (
+                    next_position,
+                    tuple(new_visited)
+                )
+
+                successors.append(
+                    (
+                        new_state,
+                        action,
+                        1
+                    )
+                )
+
+        self._expanded += 1
+
         return successors
+
 
     def getCostOfActions(self, actions):
         """
-        Returns the cost of a particular sequence of actions.  If those actions
-        include an illegal move, return 999999.  This is implemented for you.
+        Returns the cost of a particular sequence of actions.
+
+        If those actions contain an illegal move,
+        return 999999.
         """
-        if actions == None: return 999999
-        x,y= self.startingPosition
+
+        if actions is None:
+            return 999999
+
+        x, y = self.startingPosition
+
         for action in actions:
+
             dx, dy = Actions.directionToVector(action)
-            x, y = int(x + dx), int(y + dy)
-            if self.walls[x][y]: return 999999
+
+            x = int(x + dx)
+            y = int(y + dy)
+
+            if self.walls[x][y]:
+                return 999999
+
         return len(actions)
+
 
 
 def cornersHeuristic(state: Any, problem: CornersProblem):
@@ -353,15 +423,17 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
 
       problem: The CornersProblem instance for this layout.
 
-    This function should always return a number that is a lower bound on the
-    shortest path from the state to a goal of the problem; i.e.  it should be
-    admissible (as well as consistent).
+    This function should always return a number that is a lower bound
+    on the shortest path from the state to a goal of the problem;
+    i.e. it should be admissible as well as consistent.
     """
-    corners = problem.corners # These are the corner coordinates
-    walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
-    "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    corners = problem.corners
+    walls = problem.walls
+
+    # Q6 is not implemented yet.
+    # Returning 0 is a valid trivial heuristic.
+    return 0
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
