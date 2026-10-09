@@ -546,8 +546,36 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     problem.heuristicInfo['wallCount']
     """
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
-    return 0
+    foodList = foodGrid.asList()
+    if not foodList:
+        return 0
+
+    # Pacman must at least reach the farthest remaining dot, so the true maze
+    # (BFS) distance to it is a lower bound on the remaining cost (admissible).
+    # One step changes the maze distance to any dot by at most 1, so the
+    # maximum also changes by at most 1 per step (consistent).
+    # BFS results are cached per position in problem.heuristicInfo so each
+    # square is searched from only once.
+    distances = problem.heuristicInfo.get(position)
+    if distances is None:
+        distances = mazeDistancesFrom(position, problem.walls)
+        problem.heuristicInfo[position] = distances
+    return max(distances[food] for food in foodList)
+
+def mazeDistancesFrom(start, walls):
+    """BFS from start; returns {(x, y): steps} for every reachable square."""
+    distances = {start: 0}
+    fringe = util.Queue()
+    fringe.push(start)
+    while not fringe.isEmpty():
+        x, y = fringe.pop()
+        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+            dx, dy = Actions.directionToVector(action)
+            nextPosition = (int(x + dx), int(y + dy))
+            if not walls[nextPosition[0]][nextPosition[1]] and nextPosition not in distances:
+                distances[nextPosition] = distances[(x, y)] + 1
+                fringe.push(nextPosition)
+    return distances
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
