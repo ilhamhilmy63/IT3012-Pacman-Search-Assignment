@@ -42,6 +42,7 @@ import util
 import time
 import search
 import pacman
+import itertools
 
 class GoWestAgent(Agent):
     "An agent that goes West until it can't."
@@ -431,9 +432,28 @@ def cornersHeuristic(state: Any, problem: CornersProblem):
     corners = problem.corners
     walls = problem.walls
 
-    # Q6 is not implemented yet.
-    # Returning 0 is a valid trivial heuristic.
-    return 0
+    # Relaxed problem: ignore walls, so moving between two squares costs
+    # exactly their Manhattan distance.
+    position, visited_corners = state
+    unvisited = [corner for corner in corners if corner not in visited_corners]
+    if not unvisited:
+        return 0
+
+    # Try every order of the remaining corners (at most 4! = 24) and keep the
+    # cheapest tour. Pacman must visit all of them in some order, and with
+    # walls the real path can only be longer, so this never overestimates
+    # (admissible). One step moves Manhattan distance to any point by at most
+    # 1, so the cheapest tour drops by at most 1 per step (consistent).
+    best = None
+    for order in itertools.permutations(unvisited):
+        total = 0
+        current = position
+        for corner in order:
+            total += util.manhattanDistance(current, corner)
+            current = corner
+        if best is None or total < best:
+            best = total
+    return best
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
@@ -526,8 +546,36 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     problem.heuristicInfo['wallCount']
     """
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
-    return 0
+    foodList = foodGrid.asList()
+    if not foodList:
+        return 0
+
+    # Pacman must at least reach the farthest remaining dot, so the true maze
+    # (BFS) distance to it is a lower bound on the remaining cost (admissible).
+    # One step changes the maze distance to any dot by at most 1, so the
+    # maximum also changes by at most 1 per step (consistent).
+    # BFS results are cached per position in problem.heuristicInfo so each
+    # square is searched from only once.
+    distances = problem.heuristicInfo.get(position)
+    if distances is None:
+        distances = mazeDistancesFrom(position, problem.walls)
+        problem.heuristicInfo[position] = distances
+    return max(distances[food] for food in foodList)
+
+def mazeDistancesFrom(start, walls):
+    """BFS from start; returns {(x, y): steps} for every reachable square."""
+    distances = {start: 0}
+    fringe = util.Queue()
+    fringe.push(start)
+    while not fringe.isEmpty():
+        x, y = fringe.pop()
+        for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+            dx, dy = Actions.directionToVector(action)
+            nextPosition = (int(x + dx), int(y + dy))
+            if not walls[nextPosition[0]][nextPosition[1]] and nextPosition not in distances:
+                distances[nextPosition] = distances[(x, y)] + 1
+                fringe.push(nextPosition)
+    return distances
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
